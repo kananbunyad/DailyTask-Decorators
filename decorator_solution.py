@@ -1,50 +1,82 @@
-import requests
-import random
+import os
+import sys
+import datetime
 
-
-# Generate a random IMDb ID
-def generate_random_imdb_id():
-    random_id = ''.join(random.choices('0123456789', k=7))
-    return f'tt{random_id}'
-
-API_KEY = 'e3b2f6f4'
-
-# Fetch movie details from OMDb API using IMDb ID
-def fetch_movie_details(imdb_id):
-    url = f'http://www.omdbapi.com/?i={imdb_id}&apikey={API_KEY}'
-    response = requests.get(url)
-    return response.json()
-
-# Fetch 10 random movies
-def fetch_random_movies():
-    movies = []
-    while True:
-        imdb_id = generate_random_imdb_id()
-        movie_data = fetch_movie_details(imdb_id)
-        if 'Error' not in movie_data:
-            movies.append(movie_data)
-        if len(movies) == 10:
-            break
-    return movies
-
-def check_movie_year(func):
-    def wrapper(movie):
-        if int(movie['Year']) >= 2000 and int(movie['Year']) <= 2020:
-            return func(movie)
-        else:
-            print("Movie year is not between 2000 and 2020")
+# Decorator to log file operations
+def log_file_operation(func):
+    def wrapper(*args, **kwargs):
+        operation_type = func.__name__.replace("_file", "").capitalize()
+        file_path = args[0] if args else kwargs.get("file_path", "")
+        print(f"Operation: {operation_type}")
+        print(f"File Path: {file_path}")
+        print(f"Date and Time: {datetime.datetime.now()}")
+        print(f"Process ID: {os.getpid()}\n")
+        result = func(*args, **kwargs)
+        return result
     return wrapper
 
-# Display movie details
-@check_movie_year
-def display_movie_details(movie):
-    print('Title:', movie['Title'])
-    print('Year:', movie['Year'])
-    print('Genre:', movie['Genre'])
-    print('---')
+# Function to create a new file
+@log_file_operation
+def create_file(directory_path, file_name):
+    try:
+        file_path = os.path.join(directory_path, file_name)
+        with open(file_path, 'w') as file:
+            file.write(f"Operation: Create\n")
+            file.write(f"File Path: {file_path}\n")
+            file.write(f"Date and Time: {datetime.datetime.now()}\n")
+            file.write(f"Process ID: {os.getpid()}\n\n")
+        print("File created successfully")
+    except Exception as e:
+        print(f"Error occurred while creating file: {str(e)}")
 
+# Function to delete a file
 
-# Fetch and display 10 random movies
-random_movies = fetch_random_movies()
-for movie in random_movies:
-    display_movie_details(movie)
+def delete_file(file_path):
+    try:
+        os.remove(file_path)
+        print("File deleted successfully")
+    except FileNotFoundError:
+        print("File not found, please check the file path")
+    except PermissionError:
+        print("Permission denied. Unable to delete the file.")
+    except Exception as e:
+        print(f"Error occurred while deleting file: {str(e)}")
+
+# Function to rename a file
+@log_file_operation
+def rename_file(old_file_path, new_file_path):
+    try:
+        os.rename(old_file_path, new_file_path)
+        with open(new_file_path, 'a') as file:
+            file.write(f"Operation: Rename\n")
+            file.write(f"File Path: {file_path}\n")
+            file.write(f"Date and Time: {datetime.datetime.now()}\n")
+            file.write(f"Process ID: {os.getpid()}\n\n")
+        print("File renamed successfully")
+    except FileNotFoundError:
+        print("File not found, please check the file path")
+    except PermissionError:
+        print("Permission denied. Unable to rename the file.")
+    except Exception as e:
+        print(f"Error occurred while renaming file: {str(e)}")
+
+directory_path = os.getcwd()
+
+if len(sys.argv) == 3 and sys.argv[1] == 'create':
+    file_name = sys.argv[2]
+    create_file(directory_path, file_name)
+elif len(sys.argv) == 4 and sys.argv[1] == 'rename':
+    old_file_name = sys.argv[2]
+    new_file_name = sys.argv[3]
+    file_path = os.path.join(directory_path, old_file_name)
+    renamed_file_path = os.path.join(directory_path, new_file_name)
+    rename_file(file_path, renamed_file_path)
+elif len(sys.argv) == 3 and sys.argv[1] == 'delete':
+    file_name = sys.argv[2]
+    file_path = os.path.join(directory_path, file_name)
+    delete_file(file_path)
+else:
+    print("Invalid command. Usage:")
+    print("To create a file: python task.py create [file_name]")
+    print("To delete a file: python task.py delete [file_name]")
+    print("To rename a file: python task.py rename [old_file_name] [new_file_name]")
